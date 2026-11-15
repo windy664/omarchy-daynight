@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Convenience wrapper: install omarchy-daynight from a checkout.
+# Build and install omarchy-daynight, then enable the timer.
 #
 #   ./install.sh              install and enable the timer
 #   ./install.sh --migrate-legacy
@@ -9,4 +9,13 @@
 set -euo pipefail
 
 cd "$(dirname "$(readlink -f "$0")")"
-exec ./bin/omarchy-daynight install "$@"
+
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "cargo is required: https://rustup.rs" >&2
+  exit 1
+fi
+
+echo "Building omarchy-daynight..."
+cargo install --path . --root "${HOME}/.local" --locked
+
+exec "${HOME}/.local/bin/omarchy-daynight" install "$@"

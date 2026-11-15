@@ -9,8 +9,9 @@ picker is manual. This project adds a timer that computes today's sunrise and
 sunset for your coordinates and moves between a day theme and a night theme
 on its own.
 
-- **No dependencies.** Python 3 standard library only. No `pip install`, no
-  network access at runtime.
+- **One static binary.** Written in Rust. No interpreter, no Python, no
+  runtime dependencies to install.
+- **No network at runtime.** The sun's times are computed locally.
 - **Accurate.** Within 25 seconds of the sunrise-sunset.org API across five
   cities and four seasons.
 - **Self-healing.** Miss a sunrise because the laptop was asleep? The next
@@ -76,8 +77,8 @@ The fix is one line in the unit file:
 Environment=OMARCHY_PATH=/usr/share/omarchy
 ```
 
-This project ships that line in its unit, and also sets it inside the
-script, so it works however it is started.
+This project ships that line in its unit, and also sets it for every process
+it starts, so it works however it is launched.
 
 ---
 
@@ -89,7 +90,8 @@ cd omarchy-daynight
 ./install.sh
 ```
 
-`install.sh` writes the config, installs the script, drops the systemd user
+`install.sh` builds the binary with cargo, installs it to
+`~/.local/bin/omarchy-daynight`, writes the config, drops the systemd user
 units in place and enables the timer. It looks up your coordinates on the
 way, if it can.
 
@@ -100,17 +102,27 @@ them off in the same step:
 ./install.sh --migrate-legacy
 ```
 
-From a clone of this repository on your own machine:
-
-```bash
-./bin/omarchy-daynight install
-```
-
 ### Requirements
 
 - Omarchy (the theme switching goes through `omarchy theme set`)
-- Python 3.9 or newer (for `zoneinfo`)
+- A Rust toolchain, if you are building from source (1.85 or newer, for the
+  2024 edition)
 - `systemd --user` with timers, which Omarchy already provides
+
+Nothing else. The timer needs no root.
+
+### Building from a mirror
+
+The crates.io index can be slow from mainland China. Point cargo at a mirror
+in `~/.cargo/config.toml`:
+
+```toml
+[source.crates-io]
+replace-with = 'ustc'
+
+[source.ustc]
+registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
+```
 
 ---
 
@@ -143,8 +155,9 @@ fallback_night_start=19:00
 # Night light (hyprsunset) handling: off, auto.
 nightlight=off
 
-# Optional command run after every theme change.
-on_switch=
+# Optional command run after every theme change. It has to be quoted, since
+# the config file is read by sourcing it.
+on_switch="sleep 3 && $HOME/.local/bin/random-wallpaper"
 ```
 
 Any theme Omarchy knows works. List them with `omarchy theme list`. The
@@ -182,8 +195,8 @@ omarchy-daynight selftest   # check the solar calculation
 
 ```
 location   22.97, 113.74 (Asia/Shanghai)
-sunrise    2026-11-15T06:38:08+08:00
-sunset     2026-11-15T17:40:52+08:00
+sunrise    2026-11-15T06:38:14+0800
+sunset     2026-11-15T17:40:49+0800
 phase      morning
 theme now  catppuccin-latte
 theme want catppuccin-latte
@@ -198,13 +211,13 @@ Sunrise and sunset drift by a few minutes every day, so a calendar timer
 cannot hold a fixed hour and stay right. This project polls instead:
 
 1. A timer wakes up every `poll_interval` (ten minutes by default).
-2. The script computes today's sunrise and sunset for your coordinates.
+2. The tool computes today's sunrise and sunset for your coordinates.
 3. It works out whether it is currently the day half or the night half.
 4. If that differs from the theme Omarchy is using, it switches, and nothing
    happens if it does not.
 
 Polling also means a missed sunrise is picked up on the next check, rather
-than being lost. The theme is compared before every switch, so the script
+than being lost. The theme is compared before every switch, so the tool
 does nothing when it is already right.
 
 The calculation uses the NOAA solar position algorithm, evaluated at the
@@ -230,8 +243,12 @@ implementation of the same algorithm, and against day lengths taken from
 the API:
 
 ```bash
-python3 test/solar_test.py
+cargo test
+omarchy-daynight selftest
 ```
+
+`cargo test` runs the unit tests, `selftest` runs the same reference checks
+inside the installed binary.
 
 ---
 
@@ -257,7 +274,7 @@ any geocoder you like.
 ## Night light
 
 Omarchy's `hyprsunset` is off by default because it tints the screen. Set
-`nightlight=auto` to have this project turn it on at sunset and off at
+`nightlight=auto` to have this tool turn it on at sunset and off at
 sunrise, using the same `omarchy toggle nightlight` switch the menu uses.
 
 ---
@@ -280,6 +297,8 @@ That stops the timer and removes the units. The config file is left alone.
 - `on_switch` runs a command after every theme change. Use it to rotate the
   wallpaper, for example.
 - The units are user units, so they need no root and survive a reboot.
+- The crates used are `chrono`, `chrono-tz`, `ureq` and `serde`. Everything
+  else is the standard library.
 
 ## Licence
 

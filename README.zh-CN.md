@@ -6,7 +6,8 @@ Omarchy 本身没有这个功能：`hyprsunset` 只能在你自己填写的固�
 主题切换器则完全靠手动。这个项目加了一个定时器，按你的坐标算出当天的日出日落，
 在白天主题和夜晚主题之间自动切换。
 
-- **零依赖**：只用 Python 3 标准库，不需要 `pip install`，运行时不联网。
+- **一个静态二进制**：Rust 写的，不需要解释器、不需要 Python、不需要装任何运行时依赖。
+- **运行时不联网**：日出日落全部在本地算。
 - **够准**：与 sunrise-sunset.org 的官方接口相比，五个城市 × 四个季节，最大偏差 0.36 分钟。
 - **能自愈**：错过了日出（比如笔记本睡着了）？下一次检查会自动补上。
 - **对国内友好**：`locate` 通过中国气象局定位，无需 API key、无需梯子。
@@ -76,8 +77,8 @@ cd omarchy-daynight
 ./install.sh
 ```
 
-`install.sh` 会写配置、装脚本、放好 systemd user unit 并启用定时器，
-过程中会自动尝试定位你的坐标。
+`install.sh` 用 cargo 编译，装到 `~/.local/bin/omarchy-daynight`，写配置、
+放好 systemd user unit 并启用定时器。过程中会自动尝试定位你的坐标。
 
 如果你已经有自己写的 `theme-day.timer` / `theme-night.timer`，可以顺手一起停掉：
 
@@ -85,17 +86,25 @@ cd omarchy-daynight
 ./install.sh --migrate-legacy
 ```
 
-在你自己机器上的仓库克隆里执行：
-
-```bash
-./bin/omarchy-daynight install
-```
-
 ### 依赖
 
 - Omarchy（切主题走 `omarchy theme set`）
-- Python 3.9+（需要 `zoneinfo`）
+- Rust 工具链（从源码编译需要，2024 edition 要 1.85+）
 - systemd --user 定时器，Omarchy 本来就有
+
+别的都不需要。定时器不需要 root。
+
+### 从镜像编译
+
+国内拉 crates.io 索引可能慢，在 `~/.cargo/config.toml` 里指个镜像：
+
+```toml
+[source.crates-io]
+replace-with = 'ustc'
+
+[source.ustc]
+registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
+```
 
 ---
 
@@ -128,8 +137,8 @@ fallback_night_start=19:00
 # 夜灯（hyprsunset）联动：off 或 auto。
 nightlight=off
 
-# 每次切主题后额外执行的命令。
-on_switch=
+# 每次切主题后额外执行的命令。因为配置是被 source 进来的，所以必须加引号。
+on_switch="sleep 3 && $HOME/.local/bin/random-wallpaper"
 ```
 
 任何 Omarchy 认识的主题都行，用 `omarchy theme list` 查看。Catppuccin 这对
@@ -166,8 +175,8 @@ omarchy-daynight selftest   # 自检太阳计算
 
 ```
 location   22.97, 113.74 (Asia/Shanghai)
-sunrise    2026-11-15T06:38:08+08:00
-sunset     2026-11-15T17:40:52+08:00
+sunrise    2026-11-15T06:38:14+0800
+sunset     2026-11-15T17:40:49+0800
 phase      morning
 theme now  catppuccin-latte
 theme want catppuccin-latte
@@ -182,7 +191,7 @@ timer      active
 这个项目改成**轮询**：
 
 1. 定时器每 `poll_interval`（默认 10 分钟）醒一次。
-2. 脚本按你的坐标算出当天的日出和日落。
+2. 工具按你的坐标算出当天的日出和日落。
 3. 判断当前属于"白天"还是"夜晚"。
 4. 和 Omarchy 当前主题不一致才切换，一致就什么都不做。
 
@@ -208,8 +217,11 @@ timer      active
 测试套件还会拿 `astral`（同算法的另一份独立实现）和接口给出的昼长做交叉校验：
 
 ```bash
-python3 test/solar_test.py
+cargo test
+omarchy-daynight selftest
 ```
+
+`cargo test` 跑单元测试，`selftest` 在装好的二进制里跑同一套参考值校验。
 
 ---
 
@@ -251,6 +263,7 @@ omarchy-daynight uninstall
   GTK 主题会跟着变、浏览器策略会跟着变、终端和编辑器也会跟着变。
 - `on_switch` 会在每次切主题后执行一条命令，可以用它来轮换壁纸。
 - 这些都是 user unit，不需要 root，重启后依然有效。
+- 用到的 crate 是 `chrono`、`chrono-tz`、`ureq`、`serde`，其余都是标准库。
 
 ## 许可
 

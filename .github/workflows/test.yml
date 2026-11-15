@@ -5,22 +5,23 @@ on:
   pull_request:
 
 jobs:
-  solar:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          python-version: '3.12'
-      - name: Run the solar reference tests
-        run: python3 test/solar_test.py
-
-  shell:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check the shell scripts parse
-        run: |
-          bash -n bin/omarchy-daynight
-          bash -n install.sh
-          shellcheck --version >/dev/null 2>&1 && shellcheck bin/omarchy-daynight install.sh || echo "shellcheck not installed, skipping"
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --locked
+      - name: Test
+        run: cargo test --locked
+      - name: Check the formatting
+        run: cargo fmt --check
+      - name: Lint
+        run: cargo clippy --locked -- -D warnings
+      - name: Run the reference checks from the binary
+        run: ./target/release/omarchy-daynight selftest
+      - name: Check the install script parses
+        run: bash -n install.sh
