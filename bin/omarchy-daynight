@@ -97,8 +97,9 @@ fallback_night_start=$fallback_night_start
 # Night light (hyprsunset) handling: off, auto.
 nightlight=$nightlight
 
-# Optional command run after every theme change.
-on_switch=$on_switch
+# Optional command run after every theme change. Quoted, so that a command
+# with spaces survives a rewrite of this file.
+on_switch="$on_switch"
 EOF
   chmod 600 "$CONFIG_FILE"
 }
