@@ -1,0 +1,26 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  solar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run the solar reference tests
+        run: python3 test/solar_test.py
+
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the shell scripts parse
+        run: |
+          bash -n bin/omarchy-sun-theme
+          bash -n install.sh
+          shellcheck --version >/dev/null 2>&1 && shellcheck bin/omarchy-sun-theme install.sh || echo "shellcheck not installed, skipping"

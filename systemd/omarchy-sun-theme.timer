@@ -1,0 +1,11 @@
+[Unit]
+Description=Check the sun phase and switch the Omarchy theme
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=10min
+AccuracySec=1min
+Unit=omarchy-sun-theme.service
+
+[Install]
+WantedBy=timers.target

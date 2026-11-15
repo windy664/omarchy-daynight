@@ -1,0 +1,12 @@
+[Unit]
+Description=Omarchy theme switch driven by real sunrise and sunset
+Documentation=https://github.com/windy664/omarchy-sun-theme
+After=default.target
+
+[Service]
+Type=oneshot
+# The systemd user manager does not have OMARCHY_PATH when it starts, and a
+# catch-up run happens exactly then. Without this the theme lookup fails with
+# "Theme '...' does not exist".
+Environment=OMARCHY_PATH=/usr/share/omarchy
+ExecStart=%h/.local/bin/omarchy-sun-theme run
