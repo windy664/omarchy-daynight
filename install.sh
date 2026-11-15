@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Convenience wrapper: install omarchy-sun-theme from a checkout.
+# Convenience wrapper: install omarchy-daynight from a checkout.
 #
 #   ./install.sh              install and enable the timer
 #   ./install.sh --migrate-legacy
@@ -9,4 +9,4 @@
 set -euo pipefail
 
 cd "$(dirname "$(readlink -f "$0")")"
-exec ./bin/omarchy-sun-theme install "$@"
+exec ./bin/omarchy-daynight install "$@"

@@ -1,4 +1,4 @@
-# omarchy-sun-theme
+# omarchy-daynight
 
 让 Omarchy 主题跟着**真实日出日落**自动切换，而不是写死一个钟点。
 
@@ -71,8 +71,8 @@ Environment=OMARCHY_PATH=/usr/share/omarchy
 ## 安装
 
 ```bash
-git clone https://github.com/windy664/omarchy-sun-theme
-cd omarchy-sun-theme
+git clone https://github.com/windy664/omarchy-daynight
+cd omarchy-daynight
 ./install.sh
 ```
 
@@ -88,7 +88,7 @@ cd omarchy-sun-theme
 在你自己机器上的仓库克隆里执行：
 
 ```bash
-./bin/omarchy-sun-theme install
+./bin/omarchy-daynight install
 ```
 
 ### 依赖
@@ -101,7 +101,7 @@ cd omarchy-sun-theme
 
 ## 配置
 
-`~/.config/omarchy-sun-theme/config`
+`~/.config/omarchy-daynight/config`
 
 ```ini
 # 日出到日落之间用这个主题，日落到次日日出之间用另一个。
@@ -145,8 +145,8 @@ on_switch=
 ### 暂停
 
 ```bash
-touch ~/.local/state/omarchy-sun-theme/pause   # 暂停切换
-rm ~/.local/state/omarchy-sun-theme/pause       # 恢复
+touch ~/.local/state/omarchy-daynight/pause   # 暂停切换
+rm ~/.local/state/omarchy-daynight/pause       # 恢复
 ```
 
 ---
@@ -154,12 +154,12 @@ rm ~/.local/state/omarchy-sun-theme/pause       # 恢复
 ## 命令
 
 ```bash
-omarchy-sun-theme status     # 今天日出日落、当前主题、期望主题
-omarchy-sun-theme run        # 相位变了就切
-omarchy-sun-theme locate     # 根据公网 IP 猜出你的坐标
-omarchy-sun-theme install    # 安装并启用
-omarchy-sun-theme uninstall  # 移除 unit，保留配置
-omarchy-sun-theme selftest   # 自检太阳计算
+omarchy-daynight status     # 今天日出日落、当前主题、期望主题
+omarchy-daynight run        # 相位变了就切
+omarchy-daynight locate     # 根据公网 IP 猜出你的坐标
+omarchy-daynight install    # 安装并启用
+omarchy-daynight uninstall  # 移除 unit，保留配置
+omarchy-daynight selftest   # 自检太阳计算
 ```
 
 `status` 输出示例：
@@ -215,7 +215,7 @@ python3 test/solar_test.py
 
 ## 怎么拿到自己的坐标
 
-`omarchy-sun-theme locate` 用两个在国内无需梯子、无需 API key 就能访问的服务：
+`omarchy-daynight locate` 用两个在国内无需梯子、无需 API key 就能访问的服务：
 
 1. `myip.ipip.net` 报出你所在的城市；
 2. `weather.cma.cn`（中国气象局）把城市换成气象站，站号信息里带经纬度和时区。
@@ -238,7 +238,7 @@ Omarchy 的 `hyprsunset` 默认是关的，因为它会给屏幕加一层色偏�
 ## 卸载
 
 ```bash
-omarchy-sun-theme uninstall
+omarchy-daynight uninstall
 ```
 
 会停掉定时器并删除 unit，配置文件保留。

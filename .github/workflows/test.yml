@@ -21,6 +21,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check the shell scripts parse
         run: |
-          bash -n bin/omarchy-sun-theme
+          bash -n bin/omarchy-daynight
           bash -n install.sh
-          shellcheck --version >/dev/null 2>&1 && shellcheck bin/omarchy-sun-theme install.sh || echo "shellcheck not installed, skipping"
+          shellcheck --version >/dev/null 2>&1 && shellcheck bin/omarchy-daynight install.sh || echo "shellcheck not installed, skipping"

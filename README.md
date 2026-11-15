@@ -1,4 +1,4 @@
-# omarchy-sun-theme
+# omarchy-daynight
 
 Switch the Omarchy theme at **real sunrise and sunset** instead of at a fixed
 hour.
@@ -84,8 +84,8 @@ script, so it works however it is started.
 ## Install
 
 ```bash
-git clone https://github.com/windy664/omarchy-sun-theme
-cd omarchy-sun-theme
+git clone https://github.com/windy664/omarchy-daynight
+cd omarchy-daynight
 ./install.sh
 ```
 
@@ -103,7 +103,7 @@ them off in the same step:
 From a clone of this repository on your own machine:
 
 ```bash
-./bin/omarchy-sun-theme install
+./bin/omarchy-daynight install
 ```
 
 ### Requirements
@@ -116,7 +116,7 @@ From a clone of this repository on your own machine:
 
 ## Configuration
 
-`~/.config/omarchy-sun-theme/config`
+`~/.config/omarchy-daynight/config`
 
 ```ini
 # The theme applied between sunrise and sunset, and between sunset and sunrise.
@@ -161,8 +161,8 @@ at sunrise, when the screen is still dim.
 ### Pause it
 
 ```bash
-touch ~/.local/state/omarchy-sun-theme/pause   # stop switching
-rm ~/.local/state/omarchy-sun-theme/pause       # start again
+touch ~/.local/state/omarchy-daynight/pause   # stop switching
+rm ~/.local/state/omarchy-daynight/pause       # start again
 ```
 
 ---
@@ -170,12 +170,12 @@ rm ~/.local/state/omarchy-sun-theme/pause       # start again
 ## Commands
 
 ```bash
-omarchy-sun-theme status     # today: sunrise, sunset, current and wanted theme
-omarchy-sun-theme run        # switch now if the phase changed
-omarchy-sun-theme locate     # guess your coordinates from your public IP
-omarchy-sun-theme install    # install and enable
-omarchy-sun-theme uninstall  # remove the units, keep the config
-omarchy-sun-theme selftest   # check the solar calculation
+omarchy-daynight status     # today: sunrise, sunset, current and wanted theme
+omarchy-daynight run        # switch now if the phase changed
+omarchy-daynight locate     # guess your coordinates from your public IP
+omarchy-daynight install    # install and enable
+omarchy-daynight uninstall  # remove the units, keep the config
+omarchy-daynight selftest   # check the solar calculation
 ```
 
 `status` output:
@@ -237,7 +237,7 @@ python3 test/solar_test.py
 
 ## Finding your coordinates
 
-`omarchy-sun-theme locate` uses two services that work from mainland China
+`omarchy-daynight locate` uses two services that work from mainland China
 without a VPN and without an API key:
 
 1. `myip.ipip.net` reports your city.
@@ -265,7 +265,7 @@ sunrise, using the same `omarchy toggle nightlight` switch the menu uses.
 ## Uninstall
 
 ```bash
-omarchy-sun-theme uninstall
+omarchy-daynight uninstall
 ```
 
 That stops the timer and removes the units. The config file is left alone.

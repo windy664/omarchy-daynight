@@ -1,6 +1,6 @@
 [Unit]
 Description=Omarchy theme switch driven by real sunrise and sunset
-Documentation=https://github.com/windy664/omarchy-sun-theme
+Documentation=https://github.com/windy664/omarchy-daynight
 After=default.target
 
 [Service]
@@ -9,4 +9,4 @@ Type=oneshot
 # catch-up run happens exactly then. Without this the theme lookup fails with
 # "Theme '...' does not exist".
 Environment=OMARCHY_PATH=/usr/share/omarchy
-ExecStart=%h/.local/bin/omarchy-sun-theme run
+ExecStart=%h/.local/bin/omarchy-daynight run
