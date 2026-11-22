@@ -4,6 +4,7 @@ mod config;
 mod install;
 mod locate;
 mod reference;
+mod schedule;
 mod solar;
 mod theme;
 
@@ -23,6 +24,7 @@ Usage: {PROGRAM_NAME} <command>
 Commands:
   run         Switch the theme if the phase changed since the last run
   status      Show today's sunrise, sunset, current theme and next switch
+  schedule    Arm one-shot timers that fire exactly at sunrise and sunset
   install     Install the config, the systemd user units and enable the timer
   uninstall   Disable the timer and remove the systemd user units
   locate      Guess your coordinates from your public IP address
@@ -204,6 +206,38 @@ fn status_command() -> Result<(), String> {
     Ok(())
 }
 
+/// Arm the exact sunrise and sunset timers.
+///
+/// This is what the schedule timer runs every morning. It is also useful on
+/// its own, after the coordinates or the offsets in the config have changed.
+fn schedule_command() -> Result<(), String> {
+    let mut config = Config::load();
+
+    if config.auto_locate
+        && let Ok(location) = locate::locate()
+    {
+        config.latitude = Some(location.latitude);
+        config.longitude = Some(location.longitude);
+    }
+
+    let day = day_for(&config)?;
+    let now = Utc::now().with_timezone(&day.timezone);
+    let armed = schedule::arm(&config, &day.events, now)?;
+
+    if armed.is_empty() {
+        println!("{PROGRAM_NAME}: no switch ahead of us to arm");
+        return Ok(());
+    }
+
+    for timer in &armed {
+        let label = timer.label;
+        let when = timer.when.format("%Y-%m-%d %H:%M:%S %z").to_string();
+        println!("{PROGRAM_NAME}: armed the {label} timer for {when}");
+    }
+
+    Ok(())
+}
+
 fn install_command(migrate_legacy: bool) -> Result<(), String> {
     let mut config = Config::load();
 
@@ -236,11 +270,20 @@ fn install_command(migrate_legacy: bool) -> Result<(), String> {
     println!();
     println!("{PROGRAM_NAME} installed.");
     println!("  config  {}", config::config_file().display());
-    println!(
-        "  timer   {} (every {})",
-        install::TIMER_NAME,
-        config.poll_interval
-    );
+    if config.precise_schedule {
+        println!(
+            "  timer   {} (every {}, exact switches armed by {})",
+            install::TIMER_NAME,
+            config.fallback_interval,
+            install::SCHEDULE_TIMER_NAME
+        );
+    } else {
+        println!(
+            "  timer   {} (every {})",
+            install::TIMER_NAME,
+            config.poll_interval
+        );
+    }
     println!();
 
     status_command().ok();
@@ -277,6 +320,7 @@ fn main() {
     let result = match command {
         "run" => run_command(),
         "status" => status_command(),
+        "schedule" => schedule_command(),
         "install" => install_command(args.get(1).map(String::as_str) == Some("--migrate-legacy")),
         "uninstall" => install::uninstall(),
         "locate" => locate_command(),

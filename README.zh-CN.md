@@ -9,6 +9,7 @@ Omarchy 本身没有这个功能：`hyprsunset` 只能在你自己填写的固�
 - **一个静态二进制**：Rust 写的，不需要解释器、不需要 Python、不需要装任何运行时依赖。
 - **运行时不联网**：日出日落全部在本地算。
 - **够准**：与 sunrise-sunset.org 的官方接口相比，五个城市 × 四个季节，最大偏差 0.36 分钟。
+- **准点**：太阳越过地平线的那一刻就切主题，不是最多晚十分钟。
 - **能自愈**：错过了日出（比如笔记本睡着了）？下一次检查会自动补上。
 - **对国内友好**：`locate` 通过中国气象局定位，无需 API key、无需梯子。
 
@@ -86,6 +87,18 @@ cd omarchy-daynight
 ./install.sh --migrate-legacy
 ```
 
+### 没有 Rust 工具链也能装
+
+CI 会编译二进制并挂到每次运行上，所以没装 cargo 的机器也能直接用：
+
+```bash
+gh run download --repo windy664/omarchy-daynight \
+  --name omarchy-daynight-x86_64-unknown-linux-gnu \
+  -D .
+install -Dm755 omarchy-daynight ~/.local/bin/omarchy-daynight
+omarchy-daynight install
+```
+
 ### 依赖
 
 - Omarchy（切主题走 `omarchy theme set`）
@@ -127,8 +140,16 @@ timezone=Asia/Shanghai
 dawn_offset=0
 dusk_offset=0
 
-# 定时器多久检查一次相位变化。
+# 精确调度：1 = 额外挂一次性定时器，在日出和日落那一刻精确触发；
+# 0 = 只靠轮询定时器。
+precise_schedule=1
+
+# 定时器多久检查一次相位变化。precise_schedule=0 时只有它在跑，保持短一点。
 poll_interval=10min
+
+# precise_schedule=1 时兜底定时器多久检查一次。此时精确定时器已经在干活，
+# 兜底只负责补上机器睡着时错过的切换，所以间隔可以放长。
+fallback_interval=6h
 
 # 仅在极昼极夜地区使用（太阳可能整天不升或不落）。
 fallback_day_start=07:00
@@ -165,6 +186,7 @@ rm ~/.local/state/omarchy-daynight/pause       # 恢复
 ```bash
 omarchy-daynight status     # 今天日出日落、当前主题、期望主题
 omarchy-daynight run        # 相位变了就切
+omarchy-daynight schedule   # 挂上日出日落的精确定时器
 omarchy-daynight locate     # 根据公网 IP 猜出你的坐标
 omarchy-daynight install    # 安装并启用
 omarchy-daynight uninstall  # 移除 unit，保留配置
@@ -188,15 +210,29 @@ timer      active
 ## 工作原理
 
 日出日落每天都会漂几分钟，所以固定时刻的日历定时器不可能一直准。
-这个项目改成**轮询**：
+这个项目干脆**把时刻问出来**，有两种用法。
 
-1. 定时器每 `poll_interval`（默认 10 分钟）醒一次。
+### 精确调度（默认）
+
+1. 每天凌晨 00:05，调度定时器跑 `omarchy-daynight schedule`。
 2. 工具按你的坐标算出当天的日出和日落。
-3. 判断当前属于"白天"还是"夜晚"。
-4. 和 Omarchy 当前主题不一致才切换，一致就什么都不做。
+3. 向 systemd 申请两个一次性定时器，一个卡在日出，一个卡在日落。
+4. 到点它们跑 `omarchy-daynight run`，相位变了就切主题。
 
-轮询的另一个好处是：错过的日出会在下一次检查时补上，而不是永远丢失。
-每次切换前都会先比对，所以状态正确时完全静默。
+时刻每天重新算一次，所以漂移是被跟上的，不是被硬扛的。之所以要重排，
+是因为昨天排好的那个日出不是今天的那个。
+
+### 兜底轮询
+
+精确定时器在机器睡着时没法触发。所以还有一个定时器每 `fallback_interval`
+（默认 6 小时）检查一次，开机后 3 分钟也会查一次，主题还在错误的一侧就补上。
+`run` 每次切换前都会先比对，所以状态正确时完全静默。
+
+### 只轮询
+
+`precise_schedule=0` 时不挂精确定时器，只由轮询定时器每 `poll_interval`
+（默认 10 分钟）检查一次。这是最初的行为，留给不想在 user manager 里放
+一次性定时器的人。这种情况下主题最多会晚 `poll_interval`。
 
 计算用的是 NOAA 太阳位置算法，并且**在太阳过中天时刻**取值，而不是当地午夜。
 这个细节很关键：赤纬若按午夜取值，高纬度地区昼长会差两分钟，且越靠近春分

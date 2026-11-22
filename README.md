@@ -14,6 +14,8 @@ on its own.
 - **No network at runtime.** The sun's times are computed locally.
 - **Accurate.** Within 25 seconds of the sunrise-sunset.org API across five
   cities and four seasons.
+- **Exact.** The theme changes at the moment the sun crosses the horizon,
+  rather than up to ten minutes later.
 - **Self-healing.** Miss a sunrise because the laptop was asleep? The next
   check puts the theme right.
 - **China friendly.** `locate` finds your coordinates through the China
@@ -102,6 +104,19 @@ them off in the same step:
 ./install.sh --migrate-legacy
 ```
 
+### Installing without a Rust toolchain
+
+The CI builds the binary and attaches it to every run, so a machine without
+cargo can still install it:
+
+```bash
+gh run download --repo windy664/omarchy-daynight \
+  --name omarchy-daynight-x86_64-unknown-linux-gnu \
+  -D .
+install -Dm755 omarchy-daynight ~/.local/bin/omarchy-daynight
+omarchy-daynight install
+```
+
 ### Requirements
 
 - Omarchy (the theme switching goes through `omarchy theme set`)
@@ -145,8 +160,18 @@ timezone=Asia/Shanghai
 dawn_offset=0
 dusk_offset=0
 
-# How often the timer checks whether the phase changed.
+# Precise scheduling: 1 = also arm one-shot timers that fire exactly at
+# sunrise and sunset. 0 = rely on the poll timer alone.
+precise_schedule=1
+
+# How often the timer checks whether the phase changed. This is the only
+# thing that runs when precise_schedule is 0, so keep it short.
 poll_interval=10min
+
+# How often the fallback timer checks when precise_schedule is 1. The exact
+# timers do the work then, and this only covers a switch that was missed
+# while the machine was asleep, so a long interval is fine.
+fallback_interval=6h
 
 # Used only inside the polar circles, where the sun may never rise or set.
 fallback_day_start=07:00
@@ -185,6 +210,7 @@ rm ~/.local/state/omarchy-daynight/pause       # start again
 ```bash
 omarchy-daynight status     # today: sunrise, sunset, current and wanted theme
 omarchy-daynight run        # switch now if the phase changed
+omarchy-daynight schedule   # arm the exact sunrise and sunset timers
 omarchy-daynight locate     # guess your coordinates from your public IP
 omarchy-daynight install    # install and enable
 omarchy-daynight uninstall  # remove the units, keep the config
@@ -208,17 +234,37 @@ timer      active
 ## How it works
 
 Sunrise and sunset drift by a few minutes every day, so a calendar timer
-cannot hold a fixed hour and stay right. This project polls instead:
+cannot hold a fixed hour and stay right. This project asks for the times
+instead, and there are two ways to act on them.
 
-1. A timer wakes up every `poll_interval` (ten minutes by default).
+### Precise scheduling (the default)
+
+1. Every morning at 00:05 the schedule timer runs `omarchy-daynight schedule`.
 2. The tool computes today's sunrise and sunset for your coordinates.
-3. It works out whether it is currently the day half or the night half.
-4. If that differs from the theme Omarchy is using, it switches, and nothing
-   happens if it does not.
+3. It asks systemd for two one-shot timers, one at each moment.
+4. At those moments the timers run `omarchy-daynight run`, which switches the
+   theme if the phase changed.
 
-Polling also means a missed sunrise is picked up on the next check, rather
-than being lost. The theme is compared before every switch, so the tool
-does nothing when it is already right.
+The exact times are computed fresh every morning, so the drift is followed
+rather than fought. The times are re-armed because the sunrise that was
+scheduled yesterday is not today's.
+
+### The fallback poll
+
+The exact timers cannot fire while the machine is asleep. A second timer
+therefore checks every `fallback_interval` (six hours by default) and also
+three minutes after boot, and switches the theme if it is still on the wrong
+side of the horizon. `run` compares the theme before every switch, so it
+does nothing when the theme is already right.
+
+### Polling only
+
+With `precise_schedule=0` there are no exact timers, and the poll timer runs
+every `poll_interval` (ten minutes by default) instead. This is the original
+behaviour, kept for anyone who would rather not have one-shot timers in
+their user manager. The theme can then be up to `poll_interval` late.
+
+### The calculation
 
 The calculation uses the NOAA solar position algorithm, evaluated at the
 sun's transit rather than at local midnight. That detail matters: taking the

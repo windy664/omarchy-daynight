@@ -1,0 +1,8 @@
+[Unit]
+Description=Arm exact sunrise and sunset timers for omarchy-daynight
+Documentation=https://github.com/windy664/omarchy-daynight
+After=default.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/omarchy-daynight schedule

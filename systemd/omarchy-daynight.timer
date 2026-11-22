@@ -3,7 +3,7 @@ Description=Check the sun phase and switch the Omarchy theme
 
 [Timer]
 OnBootSec=3min
-OnUnitActiveSec=10min
+OnUnitActiveSec=6h
 AccuracySec=1min
 Unit=omarchy-daynight.service
 

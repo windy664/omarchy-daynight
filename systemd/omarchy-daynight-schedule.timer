@@ -1,0 +1,10 @@
+[Unit]
+Description=Arm exact sunrise and sunset timers for omarchy-daynight
+
+[Timer]
+OnCalendar=*-*-* 00:05:00
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

@@ -25,3 +25,23 @@ jobs:
         run: ./target/release/omarchy-daynight selftest
       - name: Check the install script parses
         run: bash -n install.sh
+
+  # The binary is built here rather than on the machine that runs it: a
+  # release build of this crate is heavy enough to be noticed on a laptop,
+  # and the one that matters is the one the CI proves.
+  build:
+    name: build (x86_64-unknown-linux-gnu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: x86_64-unknown-linux-gnu
+      - name: Build
+        run: cargo build --locked --release --target x86_64-unknown-linux-gnu
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omarchy-daynight-x86_64-unknown-linux-gnu
+          path: target/x86_64-unknown-linux-gnu/release/omarchy-daynight
+          if-no-files-found: error

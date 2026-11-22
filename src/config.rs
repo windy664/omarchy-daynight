@@ -59,7 +59,9 @@ pub struct Config {
     pub auto_locate: bool,
     pub dawn_offset: i32,
     pub dusk_offset: i32,
+    pub precise_schedule: bool,
     pub poll_interval: String,
+    pub fallback_interval: String,
     pub fallback_day_start: String,
     pub fallback_night_start: String,
     pub nightlight: String,
@@ -77,7 +79,9 @@ impl Default for Config {
             auto_locate: false,
             dawn_offset: 0,
             dusk_offset: 0,
+            precise_schedule: true,
             poll_interval: "10min".into(),
+            fallback_interval: "6h".into(),
             fallback_day_start: "07:00".into(),
             fallback_night_start: "19:00".into(),
             nightlight: "off".into(),
@@ -111,7 +115,9 @@ impl Config {
                 "auto_locate" => config.auto_locate = value == "1" || value == "true",
                 "dawn_offset" => config.dawn_offset = value.parse().unwrap_or(0),
                 "dusk_offset" => config.dusk_offset = value.parse().unwrap_or(0),
+                "precise_schedule" => config.precise_schedule = value == "1" || value == "true",
                 "poll_interval" => config.poll_interval = value,
+                "fallback_interval" => config.fallback_interval = value,
                 "fallback_day_start" => config.fallback_day_start = value,
                 "fallback_night_start" => config.fallback_night_start = value,
                 "nightlight" => config.nightlight = value,
@@ -152,8 +158,18 @@ auto_locate={auto_locate}
 dawn_offset={dawn_offset}
 dusk_offset={dusk_offset}
 
-# How often the timer checks whether the phase changed.
+# Precise scheduling: 1 = also arm one-shot timers that fire exactly at
+# sunrise and sunset. 0 = rely on the poll timer alone.
+precise_schedule={precise_schedule}
+
+# How often the timer checks whether the phase changed. This is the only
+# thing that runs when precise_schedule is 0, so keep it short.
 poll_interval={poll_interval}
+
+# How often the fallback timer checks when precise_schedule is 1. The exact
+# timers do the work then, and this only covers a switch that was missed
+# while the machine was asleep, so a long interval is fine.
+fallback_interval={fallback_interval}
 
 # Used only inside the polar circles, where the sun may never rise or set.
 fallback_day_start={fallback_day_start}
@@ -174,7 +190,9 @@ on_switch="{on_switch}"
             auto_locate = if self.auto_locate { 1 } else { 0 },
             dawn_offset = self.dawn_offset,
             dusk_offset = self.dusk_offset,
+            precise_schedule = if self.precise_schedule { 1 } else { 0 },
             poll_interval = self.poll_interval,
+            fallback_interval = self.fallback_interval,
             fallback_day_start = self.fallback_day_start,
             fallback_night_start = self.fallback_night_start,
             nightlight = self.nightlight,

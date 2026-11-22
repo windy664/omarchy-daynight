@@ -7,6 +7,8 @@ use crate::theme::omarchy_path;
 
 pub const SERVICE_NAME: &str = "omarchy-daynight.service";
 pub const TIMER_NAME: &str = "omarchy-daynight.timer";
+pub const SCHEDULE_SERVICE_NAME: &str = "omarchy-daynight-schedule.service";
+pub const SCHEDULE_TIMER_NAME: &str = "omarchy-daynight-schedule.timer";
 
 /// The legacy fixed-time units this project replaces.
 const LEGACY_UNITS: [&str; 2] = ["theme-day.timer", "theme-night.timer"];
@@ -59,6 +61,39 @@ WantedBy=timers.target
     )
 }
 
+/// The unit that re-arms the exact sunrise and sunset timers.
+fn schedule_service_unit() -> String {
+    format!(
+        r#"[Unit]
+Description=Arm exact sunrise and sunset timers for {PROGRAM_NAME}
+Documentation=https://github.com/windy664/{PROGRAM_NAME}
+After=default.target
+
+[Service]
+Type=oneshot
+ExecStart={binary} schedule
+"#,
+        binary = binary_path().display(),
+    )
+}
+
+/// Re-arms the exact timers every morning, because the sun's times drift.
+fn schedule_timer_unit() -> String {
+    format!(
+        r#"[Unit]
+Description=Arm exact sunrise and sunset timers for {PROGRAM_NAME}
+
+[Timer]
+OnCalendar=*-*-* 00:05:00
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
+"#
+    )
+}
+
 /// Where the tool is installed.
 pub fn binary_path() -> std::path::PathBuf {
     home().join(".local/bin").join(PROGRAM_NAME)
@@ -71,8 +106,26 @@ fn write_units(config: &Config) -> Result<(), String> {
     let service = dir.join(SERVICE_NAME);
     let timer = dir.join(TIMER_NAME);
     std::fs::write(&service, service_unit()).map_err(|error| format!("{service:?}: {error}"))?;
-    std::fs::write(&timer, timer_unit(&config.poll_interval))
+
+    // With the exact timers in place the poll only covers a switch that was
+    // missed, so it can afford to be rare.
+    let poll_interval = if config.precise_schedule {
+        &config.fallback_interval
+    } else {
+        &config.poll_interval
+    };
+    std::fs::write(&timer, timer_unit(poll_interval))
         .map_err(|error| format!("{timer:?}: {error}"))?;
+
+    if config.precise_schedule {
+        let schedule_service = dir.join(SCHEDULE_SERVICE_NAME);
+        let schedule_timer = dir.join(SCHEDULE_TIMER_NAME);
+        std::fs::write(&schedule_service, schedule_service_unit())
+            .map_err(|error| format!("{schedule_service:?}: {error}"))?;
+        std::fs::write(&schedule_timer, schedule_timer_unit())
+            .map_err(|error| format!("{schedule_timer:?}: {error}"))?;
+    }
+
     Ok(())
 }
 
@@ -106,6 +159,14 @@ pub fn install(config: &mut Config, migrate: bool) -> Result<(), String> {
         return Err(format!("could not enable {TIMER_NAME}"));
     }
 
+    if config.precise_schedule {
+        if !systemctl(&["enable", "--now", SCHEDULE_TIMER_NAME]) {
+            return Err(format!("could not enable {SCHEDULE_TIMER_NAME}"));
+        }
+    } else {
+        systemctl(&["disable", "--now", SCHEDULE_TIMER_NAME]);
+    }
+
     if migrate {
         for unit in migrate_legacy() {
             println!("{PROGRAM_NAME}: disabled the legacy {unit}");
@@ -118,9 +179,15 @@ pub fn install(config: &mut Config, migrate: bool) -> Result<(), String> {
 /// Remove the units and stop the timer.
 pub fn uninstall() -> Result<(), String> {
     systemctl(&["disable", "--now", TIMER_NAME]);
+    systemctl(&["disable", "--now", SCHEDULE_TIMER_NAME]);
 
     let dir = unit_dir();
-    for name in [SERVICE_NAME, TIMER_NAME] {
+    for name in [
+        SERVICE_NAME,
+        TIMER_NAME,
+        SCHEDULE_SERVICE_NAME,
+        SCHEDULE_TIMER_NAME,
+    ] {
         let path = dir.join(name);
         if path.exists() {
             let _ = std::fs::remove_file(&path);
