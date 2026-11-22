@@ -52,7 +52,7 @@ fn unit_name(label: &str, when: &DateTime<Tz>) -> String {
 /// be spelled out in that timezone even when the solar calculation ran
 /// somewhere else.
 fn on_calendar(when: &DateTime<Tz>) -> String {
-    let system = system_timezone().unwrap_or_else(|| *when.timezone());
+    let system = system_timezone().unwrap_or_else(|| when.timezone());
     when.with_timezone(&system)
         .format("%Y-%m-%d %H:%M:%S")
         .to_string()
